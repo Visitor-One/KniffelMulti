@@ -1,104 +1,168 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
-  <title>Kniffel Multiplayer</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root{--bg:#0b1020;--card:#141b2d;--card2:#1b2440;--txt:#f6f7fb;--muted:#aab2c8;--accent:#4fd1c5;--good:#5ee082;--bad:#ff6b6b;--line:#2b3658}
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{margin:0;background:linear-gradient(180deg,#0b1020,#11182a);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100%}
-    body{padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
-    .wrap{max-width:900px;margin:auto}
-    h1{font-size:28px;margin:12px 0 4px}.version{color:var(--muted);font-size:12px;margin-bottom:14px}
-    .card{background:rgba(20,27,45,.96);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 12px 30px #0004}
-    input,button{font:inherit}
-    input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:#0e1527;color:var(--txt);font-size:17px;margin:6px 0}
-    button{border:0;border-radius:13px;padding:13px 16px;background:var(--accent);color:#071116;font-weight:800;cursor:pointer}
-    button.secondary{background:#273454;color:var(--txt)} button.danger{background:#7d2b35;color:#fff}
-    button:disabled{opacity:.45}
-    .row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
-    .hidden{display:none!important}
-    .roomCode{font-size:34px;letter-spacing:5px;font-weight:900;text-align:center;margin:8px}
-    .players{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:8px 12px;border-radius:999px;background:#202b49}.me{outline:2px solid var(--accent)}
-    .turn{font-size:18px;font-weight:800;text-align:center;margin:10px 0}
-    .dice{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:18px 0}
-    .die{width:68px;height:68px;border-radius:14px;background:#f7f7f7;color:#111;display:grid;place-items:center;font-size:38px;font-weight:900;box-shadow:inset 0 -7px 0 #d5d5d5,0 8px 18px #0005;user-select:none}
-    .die.held{outline:5px solid var(--accent);transform:translateY(-4px)}
-    .die.roll{animation:roll .35s linear infinite}@keyframes roll{0%{transform:rotate(0) scale(.95)}50%{transform:rotate(12deg) scale(1.05)}100%{transform:rotate(0) scale(.95)}}
-    .status{text-align:center;color:var(--muted);margin:8px}
-    table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:center}th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
-    td.option{cursor:pointer;background:#172746;color:#bfe7ff;font-weight:800}.total{font-weight:900}
-    .scroll{overflow:auto;border-radius:12px}
-    .small{font-size:12px;color:var(--muted)}
-    .banner{padding:10px 12px;border-radius:12px;background:#17322a;color:#c9ffdb;margin:10px 0}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#101722">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Kniffel Multiplayer V4</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0b1119;--panel:#121c29;--panel2:#182536;--text:#f5f7fb;--muted:#91a0b4;
+  --accent:#53d6a5;--gold:#ffd166;--red:#ff6b6b;--line:#29384b;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:
+ radial-gradient(circle at 50% -10%,#203754 0,#101a28 35%,var(--bg) 72%);
+ color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
+button,input,select{font:inherit}
+.wrap{width:min(980px,100%);margin:auto;padding:10px 0 28px}
+h1{margin:5px 0 3px;text-align:center;font-size:clamp(30px,7vw,50px)}
+.subtitle{text-align:center;color:var(--muted);margin-bottom:5px}
+.version{text-align:center;color:#6f829b;font-size:12px;margin-bottom:14px}
+.card{background:linear-gradient(145deg,rgba(25,39,56,.97),rgba(13,22,33,.97));
+ border:1px solid #2a3b50;border-radius:20px;padding:16px;box-shadow:0 14px 35px #0007;margin-bottom:14px}
+.setupRow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+input{background:#0c1520;color:white;border:1px solid #34475f;border-radius:12px;padding:12px;width:100%}
+.btn{border:0;border-radius:14px;padding:13px 18px;font-weight:800;background:var(--accent);color:#07150f;box-shadow:0 5px 0 #278a68;cursor:pointer}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #278a68}
+.btn.secondary{background:#27384c;color:white;box-shadow:0 5px 0 #14202e}
+.btn.danger{background:#ff7373;color:#2b0808;box-shadow:0 5px 0 #a43838}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.hidden{display:none!important}
+.topline{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.player{font-size:22px;font-weight:900}.rollCount{color:var(--gold);font-weight:800}
+.diceArea{display:flex;justify-content:center;gap:clamp(7px,2vw,18px);flex-wrap:nowrap;margin:20px 0 15px;perspective:900px}
+.die{
+ width:clamp(56px,16vw,105px);aspect-ratio:1;border-radius:19%;
+ background:linear-gradient(145deg,#fff,#dfe5ec);position:relative;cursor:pointer;
+ box-shadow:inset 7px 7px 13px #ffffff,inset -8px -8px 14px #aab3bf,0 12px 14px #0008;
+ transition:.18s transform,.18s box-shadow,.18s filter;border:3px solid #f8fbff
+}
+.die.held{transform:translateY(-12px) rotateX(8deg);box-shadow:0 0 0 4px var(--accent),0 18px 18px #0009;filter:brightness(1.03)}
+.die.held:after{content:"HALTEN";position:absolute;left:50%;bottom:-27px;transform:translateX(-50%);font-size:10px;font-weight:900;color:var(--accent)}
+.die.rolling{animation:roll .72s cubic-bezier(.2,.75,.25,1)}
+@keyframes roll{
+0%{transform:rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1)}
+20%{transform:rotateX(95deg) rotateY(70deg) rotateZ(35deg) scale(.88)}
+45%{transform:rotateX(190deg) rotateY(165deg) rotateZ(120deg) scale(1.08)}
+70%{transform:rotateX(285deg) rotateY(255deg) rotateZ(220deg) scale(.92)}
+100%{transform:rotateX(360deg) rotateY(360deg) rotateZ(360deg) scale(1)}
+}
+.pip{position:absolute;width:17%;aspect-ratio:1;background:#111923;border-radius:50%;box-shadow:inset 2px 2px 2px #0008,1px 1px 1px #fff9}
+.p1{left:17%;top:17%}.p2{left:41.5%;top:17%}.p3{right:17%;top:17%}
+.p4{left:17%;top:41.5%}.p5{left:41.5%;top:41.5%}.p6{right:17%;top:41.5%}
+.p7{left:17%;bottom:17%}.p8{left:41.5%;bottom:17%}.p9{right:17%;bottom:17%}
+.controls{text-align:center;margin-top:28px}.hint{text-align:center;color:var(--muted);font-size:13px;margin:10px 0 0}
+.optionsTitle{font-weight:900;margin:3px 0 9px}
+.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.option{border:1px solid #32465f;background:#172536;color:white;border-radius:13px;padding:10px 12px;text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.option strong{font-size:20px;color:var(--accent)}.option.zero strong{color:var(--red)}
+.tableWrap{overflow:auto;border-radius:14px;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:510px;background:#0d1722}
+th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:9px 8px;text-align:center;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:#111d2a;z-index:1}
+thead th{background:#19283a;position:sticky;top:0;z-index:2}thead th:first-child{z-index:3}
+.activeCol{background:#173c35!important}.used{font-weight:900}.preview{color:var(--accent);font-weight:900}
+.sumrow td{background:#162334;font-weight:800}.total td{background:#233648;font-size:17px;font-weight:900}
+.small{font-size:12px;color:var(--muted)}
+.endBox{text-align:center}.winner{font-size:30px;font-weight:950;color:var(--gold);margin:8px}
+.roomCode{font-size:clamp(34px,10vw,54px);font-weight:950;letter-spacing:7px;color:var(--gold);text-align:center;margin:8px 0}
+.players{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0}
+.pill{padding:8px 12px;border-radius:999px;background:#213247;border:1px solid #344b65;font-weight:700}
+.pill.me{box-shadow:0 0 0 2px var(--accent)}
+.status{text-align:center;color:var(--muted);margin-top:10px;min-height:20px}
+.invite{word-break:break-all;text-align:center;color:var(--muted);font-size:12px;margin-top:10px}
+@media(max-width:520px){.card{padding:12px}.options{grid-template-columns:1fr}.die{border-width:2px}.player{font-size:19px}}
+</style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🎲 Kniffel Multiplayer</h1>
-  <div class="version">Version MP 1.0 · Supabase Realtime</div>
+  <h1>🎲 KNIFFEL</h1>
+  <div class="subtitle">5 Würfel · 3 Würfe · höchste Punktzahl gewinnt</div>
+  <div class="version">Multiplayer V4.0 · Supabase Realtime</div>
 
-  <section id="loginCard" class="card">
-    <input id="nameInput" maxlength="18" placeholder="Dein Name" autocomplete="nickname">
-    <div class="row">
-      <button id="createBtn">Spiel erstellen</button>
-      <button id="showJoinBtn" class="secondary">Beitreten</button>
+  <section id="setup" class="card">
+    <input id="nameInput" maxlength="18" placeholder="Dein Name">
+    <div class="setupRow" style="margin-top:12px">
+      <button class="btn" id="createBtn">Spiel erstellen</button>
+      <button class="btn secondary" id="showJoinBtn">Beitreten</button>
     </div>
-    <div id="joinArea" class="hidden">
+    <div id="joinArea" class="hidden" style="margin-top:12px">
       <input id="codeInput" maxlength="6" placeholder="Raumcode" autocapitalize="characters">
-      <button id="joinBtn">Raum beitreten</button>
+      <div class="setupRow" style="margin-top:10px"><button class="btn" id="joinBtn">Raum beitreten</button></div>
     </div>
     <div id="authMsg" class="status"></div>
   </section>
 
-  <section id="lobbyCard" class="card hidden">
-    <div class="small">Raumcode</div>
+  <section id="lobby" class="card hidden">
+    <div class="small" style="text-align:center">Raumcode</div>
     <div id="roomCode" class="roomCode">------</div>
-    <div class="row">
-      <button id="copyBtn" class="secondary">Einladungslink kopieren</button>
-      <button id="startBtn">Spiel starten</button>
-    </div>
-    <h3>Spieler</h3>
     <div id="players" class="players"></div>
-    <div id="lobbyMsg" class="status">Warte auf Spieler …</div>
-  </section>
-
-  <section id="gameCard" class="card hidden">
-    <div id="turnText" class="turn"></div>
-    <div id="dice" class="dice"></div>
-    <div class="row">
-      <button id="rollBtn">Würfeln</button>
-      <button id="leaveBtn" class="danger">Spiel verlassen</button>
+    <div class="setupRow">
+      <button class="btn secondary" id="copyBtn">Einladungslink kopieren</button>
+      <button class="btn" id="startBtn">Spiel starten</button>
     </div>
-    <div id="rollInfo" class="status"></div>
-    <div class="scroll"><table id="scoreTable"></table></div>
+    <div id="lobbyMsg" class="status">Warte auf Spieler …</div>
+    <div id="inviteUrl" class="invite"></div>
   </section>
 
-  <section id="endCard" class="card hidden">
-    <h2>🏁 Spiel beendet</h2>
-    <div id="winner" class="banner"></div>
-    <div class="scroll"><table id="finalTable"></table></div>
-    <button onclick="location.href=location.pathname">Zurück zum Start</button>
+  <main id="game" class="hidden">
+    <section class="card">
+      <div class="topline">
+        <div class="player">Am Zug: <span id="currentPlayer"></span></div>
+        <div class="rollCount">Wurf <span id="rollNo">0</span> / 3</div>
+      </div>
+      <div id="dice" class="diceArea"></div>
+      <div class="controls"><button class="btn" id="rollBtn">🎲 Würfeln</button></div>
+      <div id="hint" class="hint">Erster Wurf: alle fünf Würfel werden gewürfelt.</div>
+    </section>
+
+    <section class="card">
+      <div class="optionsTitle">Mögliche Einträge nach diesem Wurf</div>
+      <div id="options" class="options"><div class="small">Nach dem ersten Wurf erscheinen hier die Wertungen.</div></div>
+    </section>
+
+    <section class="card">
+      <div class="topline"><b>Spielblock</b><span class="small">Grüne Werte = aktuell mögliche Wertung</span></div>
+      <div class="tableWrap" style="margin-top:10px"><table id="scoreTable"></table></div>
+    </section>
+
+    <div style="text-align:center"><button class="btn danger" id="newBtn">Spiel abbrechen</button></div>
+  </main>
+
+  <section id="end" class="card endBox hidden">
+    <div id="endTitle">Spiel beendet</div>
+    <div id="winner" class="winner"></div>
+    <div id="finalScores"></div>
+    <div class="tableWrap" style="margin:16px 0;text-align:left"><table id="finalTable"></table></div>
+    <button class="btn" id="restartBtn">Zurück zum Start</button>
   </section>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://ymfeptuwlsbfwduhutom.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_T5JPOle-cjxiIfftUaJu1w_khtAAaMF';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL='https://ymfeptuwlsbfwduhutom.supabase.co';
+const SUPABASE_KEY='sb_publishable_T5JPOle-cjxiIfftUaJu1w_khtAAaMF';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const CATS = [
- ['ones','Einser'],['twos','Zweier'],['threes','Dreier'],['fours','Vierer'],['fives','Fünfer'],['sixes','Sechser'],
- ['threeKind','Dreierpasch'],['fourKind','Viererpasch'],['fullHouse','Full House'],['smallStraight','Kleine Straße'],['largeStraight','Große Straße'],['kniffel','Kniffel'],['chance','Chance']
+const categories=[
+ ['ones','Einer'],['twos','Zweier'],['threes','Dreier'],['fours','Vierer'],['fives','Fünfer'],['sixes','Sechser'],
+ ['threeKind','Dreierpasch'],['fourKind','Viererpasch'],['fullHouse','Full House'],
+ ['smallStraight','Kleine Straße'],['largeStraight','Große Straße'],['yahtzee','Kniffel'],['chance','Chance']
 ];
-let me=null, room=null, players=[], channel=null, rolling=false;
 
+let me=null,room=null,players=[],channel=null,rolling=false;
 const $=id=>document.getElementById(id);
-const show=id=>$(id).classList.remove('hidden'), hide=id=>$(id).classList.add('hidden');
+const show=id=>$(id).classList.remove('hidden');
+const hide=id=>$(id).classList.add('hidden');
 
+function initialState(){
+  return {turn:0,rolls:0,dice:[1,1,1,1,1],held:[false,false,false,false,false],hasRolled:false,scores:{},aborted:false,finished:false};
+}
 async function ensureAuth(){
   let {data:{session}}=await sb.auth.getSession();
   if(!session){
@@ -108,169 +172,248 @@ async function ensureAuth(){
   }
   me=session.user;
 }
-
-function cleanName(){ return $('nameInput').value.trim().slice(0,18); }
-function randomCode(){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join(''); }
-function initialState(){
- return {turn:0,rolls:0,dice:[1,1,1,1,1],held:[false,false,false,false,false],scores:{},finished:false};
+function cleanName(){return $('nameInput').value.trim().slice(0,18)}
+function randomCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
 }
 async function createRoom(){
- try{
-  const name=cleanName(); if(!name) return $('authMsg').textContent='Bitte Namen eingeben.';
-  await ensureAuth();
-  const code=randomCode();
-  const {data,error}=await sb.rpc('create_kniffel_room',{p_code:code,p_name:name,p_state:initialState()});
-  if(error) throw error;
-  await loadRoom(data);
- }catch(e){ $('authMsg').textContent='Fehler: '+e.message; }
+  try{
+    const name=cleanName(); if(!name){$('authMsg').textContent='Bitte Namen eingeben.';return}
+    $('authMsg').textContent='Raum wird erstellt …';
+    await ensureAuth();
+    const {data,error}=await sb.rpc('create_kniffel_room',{p_code:randomCode(),p_name:name,p_state:initialState()});
+    if(error) throw error;
+    await loadRoom(data);
+  }catch(e){$('authMsg').textContent='Fehler: '+e.message}
 }
 async function joinRoom(){
- try{
-  const name=cleanName(); const code=$('codeInput').value.trim().toUpperCase();
-  if(!name||code.length<4) return $('authMsg').textContent='Name und Raumcode eingeben.';
-  await ensureAuth();
-  const {data,error}=await sb.rpc('join_kniffel_room',{p_code:code,p_name:name});
-  if(error) throw error;
-  await loadRoom(data);
- }catch(e){ $('authMsg').textContent='Beitreten fehlgeschlagen: '+e.message; }
+  try{
+    const name=cleanName(),code=$('codeInput').value.trim().toUpperCase();
+    if(!name||code.length!==6){$('authMsg').textContent='Bitte Name und 6-stelligen Raumcode eingeben.';return}
+    $('authMsg').textContent='Raum wird geöffnet …';
+    await ensureAuth();
+    const {data,error}=await sb.rpc('join_kniffel_room',{p_code:code,p_name:name});
+    if(error) throw error;
+    await loadRoom(data);
+  }catch(e){$('authMsg').textContent='Beitreten fehlgeschlagen: '+e.message}
 }
-async function loadRoom(roomId){
- const {data,error}=await sb.from('kniffel_rooms').select('*').eq('id',roomId).single();
- if(error) throw error;
- room=data;
- await refreshPlayers();
- subscribe();
- render();
+async function loadRoom(id){
+  const {data,error}=await sb.from('kniffel_rooms').select('*').eq('id',id).single();
+  if(error) throw error;
+  room=data;
+  await refreshPlayers();
+  subscribe();
+  renderAll();
 }
 async function refreshPlayers(){
- const {data}=await sb.from('kniffel_players').select('*').eq('room_id',room.id).order('seat');
- players=data||[];
+  const {data,error}=await sb.from('kniffel_players').select('*').eq('room_id',room.id).order('seat');
+  if(error) throw error;
+  players=data||[];
 }
 function subscribe(){
- if(channel) sb.removeChannel(channel);
- channel=sb.channel('kniffel-'+room.id)
-  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'kniffel_rooms',filter:'id=eq.'+room.id},async p=>{room=p.new; await refreshPlayers(); render();})
-  .on('postgres_changes',{event:'*',schema:'public',table:'kniffel_players',filter:'room_id=eq.'+room.id},async()=>{await refreshPlayers();render();})
-  .subscribe();
+  if(channel) sb.removeChannel(channel);
+  channel=sb.channel('kniffel-'+room.id)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'kniffel_rooms',filter:'id=eq.'+room.id},async p=>{
+      room=p.new; await refreshPlayers(); renderAll();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'kniffel_players',filter:'room_id=eq.'+room.id},async()=>{
+      await refreshPlayers(); renderAll();
+    }).subscribe();
 }
 async function patchState(state,status=room.status){
- const {data,error}=await sb.rpc('update_kniffel_room',{p_room:room.id,p_state:state,p_status:status});
- if(error) alert(error.message);
+  const {error}=await sb.rpc('update_kniffel_room',{p_room:room.id,p_state:state,p_status:status});
+  if(error) alert(error.message);
 }
-function render(){
- hide('loginCard'); $('roomCode').textContent=room.code;
- $('players').innerHTML=players.map(p=>`<span class="pill ${p.user_id===me.id?'me':''}">${esc(p.name)}${p.user_id===room.host_id?' 👑':''}</span>`).join('');
- if(room.status==='lobby'){
-   show('lobbyCard'); hide('gameCard'); hide('endCard');
-   $('startBtn').style.display = room.host_id===me.id ? '' : 'none';
-   $('lobbyMsg').textContent = players.length<2 ? 'Mindestens 2 Spieler empfohlen.' : players.length+' Spieler bereit.';
-   return;
+function state(){return room.state||initialState()}
+function scoreObj(p){return state().scores?.[p.user_id]||{}}
+function pObj(p){return {name:p.name,scores:scoreObj(p),user_id:p.user_id}}
+function isMyTurn(){const st=state(),p=players[st.turn];return !!p&&p.user_id===me?.id}
+
+function pips(n){
+ const maps={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+ return maps[n].map(x=>`<i class="pip p${x}"></i>`).join('');
+}
+function renderDice(){
+ const st=state(); $('dice').innerHTML='';
+ st.dice.forEach((v,i)=>{
+   let d=document.createElement('div');d.className='die'+(st.held[i]?' held':'');d.innerHTML=pips(v);
+   d.onclick=()=>toggleHold(i); $('dice').appendChild(d);
+ });
+}
+async function toggleHold(i){
+  const st=structuredClone(state());
+  if(!isMyTurn()||!st.hasRolled||rolling)return;
+  st.held[i]=!st.held[i];
+  room.state=st; renderDice();
+  await patchState(st);
+}
+
+function score(cat,ds){
+ let c=[0,0,0,0,0,0,0];ds.forEach(v=>c[v]++);let sum=ds.reduce((a,b)=>a+b,0);
+ if(['ones','twos','threes','fours','fives','sixes'].includes(cat)){let n=['ones','twos','threes','fours','fives','sixes'].indexOf(cat)+1;return c[n]*n}
+ if(cat==='threeKind')return Math.max(...c)>=3?sum:0;
+ if(cat==='fourKind')return Math.max(...c)>=4?sum:0;
+ if(cat==='fullHouse')return c.includes(3)&&c.includes(2)?25:0;
+ let u=[...new Set(ds)].sort().join('');
+ if(cat==='smallStraight')return ['1234','2345','3456'].some(s=>[...s].every(x=>u.includes(x)))?30:0;
+ if(cat==='largeStraight')return (u==='12345'||u==='23456')?40:0;
+ if(cat==='yahtzee')return Math.max(...c)===5?50:0;
+ if(cat==='chance')return sum;
+ return 0;
+}
+function upper(p){return ['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(p.scores[k]??0),0)}
+function upperDisplay(k,val){
+ const keys=['ones','twos','threes','fours','fives','sixes'];const idx=keys.indexOf(k);
+ return idx>=0?`${val} / ${(idx+1)*5}`:`${val}`;
+}
+function bonus(p){return upper(p)>=63?35:0}
+function lower(p){return ['threeKind','fourKind','fullHouse','smallStraight','largeStraight','yahtzee','chance'].reduce((s,k)=>s+(p.scores[k]??0),0)}
+function total(p){return upper(p)+bonus(p)+lower(p)}
+
+function renderOptions(){
+ let o=$('options'),st=state();o.innerHTML='';
+ if(!st.hasRolled){o.innerHTML='<div class="small">Nach dem ersten Wurf erscheinen hier die Wertungen.</div>';return}
+ if(!isMyTurn()){o.innerHTML='<div class="small">Der andere Spieler ist am Zug.</div>';return}
+ let p=pObj(players[st.turn]);
+ categories.filter(([k])=>p.scores[k]===undefined).forEach(([k,label])=>{
+   let val=score(k,st.dice),b=document.createElement('button');b.className='option'+(val===0?' zero':'');
+   b.innerHTML=`<span>${label}</span><strong>${upperDisplay(k,val)}</strong>`;
+   b.onclick=()=>choose(k,val);o.appendChild(b);
+ });
+}
+function renderTable(){
+ let t=$('scoreTable'),st=state();
+ let objs=players.map(pObj);
+ let h='<thead><tr><th>Kategorie</th>'+objs.map((p,i)=>`<th class="${i===st.turn?'activeCol':''}">${escapeHtml(p.name)}</th>`).join('')+'</tr></thead><tbody>';
+ function row(k,label){
+   h+=`<tr><td>${label}</td>`+objs.map((p,i)=>{
+     let v=p.scores[k];
+     if(v!==undefined)return `<td class="used ${i===st.turn?'activeCol':''}">${v}</td>`;
+     if(i===st.turn&&st.hasRolled){let pv=score(k,st.dice);return `<td class="preview activeCol">${upperDisplay(k,pv)}</td>`}
+     return `<td class="${i===st.turn?'activeCol':''}">–</td>`;
+   }).join('')+'</tr>';
  }
- hide('lobbyCard');
- if(room.status==='finished'||room.state.finished){ showEnd(); return; }
- show('gameCard'); hide('endCard'); renderGame();
+ categories.slice(0,6).forEach(x=>row(...x));
+ h+=`<tr class="sumrow"><td>Obere Summe</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${upper(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="sumrow"><td>Bonus (ab 63)</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${bonus(p)}</td>`).join('')}</tr>`;
+ categories.slice(6).forEach(x=>row(...x));
+ h+=`<tr class="sumrow"><td>Untere Summe</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${lower(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="total"><td>GESAMT</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${total(p)}</td>`).join('')}</tr></tbody>`;
+ t.innerHTML=h;
 }
-function renderGame(){
- const st=room.state; const active=players[st.turn]; const myTurn=active?.user_id===me.id;
- $('turnText').textContent=active ? `Am Zug: ${active.name}${myTurn?' (du)':''}` : 'Spiel läuft';
- $('dice').innerHTML=st.dice.map((d,i)=>`<div class="die ${st.held[i]?'held':''}" data-i="${i}">${d}</div>`).join('');
- document.querySelectorAll('.die').forEach(el=>el.onclick=()=>toggleHold(+el.dataset.i));
- $('rollBtn').disabled=!myTurn||st.rolls>=3||rolling;
- $('rollBtn').textContent=st.rolls===0?'Würfeln':`Weiterwürfeln (${3-st.rolls} übrig)`;
- $('rollInfo').textContent=myTurn ? (st.rolls? 'Würfel antippen zum Halten. Danach Ergebnis eintragen.':'Du bist dran.') : 'Warte auf den anderen Spieler …';
- renderScores();
-}
-function toggleHold(i){
- const st=structuredClone(room.state); const active=players[st.turn];
- if(!active||active.user_id!==me.id||st.rolls===0) return;
- st.held[i]=!st.held[i]; room.state=st; renderGame();
- // Halten ist absichtlich lokal bis zum nächsten Wurf/Eintrag.
+function updateGame(){
+ const st=state(),active=players[st.turn];
+ $('currentPlayer').textContent=active?.name||'';
+ $('rollNo').textContent=st.rolls;
+ const mine=isMyTurn();
+ $('rollBtn').disabled=!mine||st.rolls>=3||rolling;
+ $('rollBtn').style.opacity=$('rollBtn').disabled?'.45':'1';
+ $('rollBtn').textContent=st.rolls===0?'🎲 Würfeln':st.rolls<3?'🎲 Weiter würfeln':'3 Würfe verbraucht';
+ $('hint').textContent=!mine?`Warte auf ${active?.name||'den anderen Spieler'} …`:
+   !st.hasRolled?'Erster Wurf: alle fünf Würfel werden gewürfelt.':
+   st.rolls<3?'Würfel antippen, um sie zu behalten. Danach weiterwürfeln oder Wertung auswählen.':
+   'Dritter Wurf: jetzt eine Kategorie auswählen.';
+ $('newBtn').textContent=room.host_id===me.id?'Spiel abbrechen':'Spiel verlassen';
+ renderDice();renderOptions();renderTable();
 }
 async function roll(){
- const st=structuredClone(room.state), active=players[st.turn];
- if(!active||active.user_id!==me.id||st.rolls>=3||rolling) return;
- rolling=true; document.querySelectorAll('.die').forEach(d=>d.classList.add('roll'));
- await new Promise(r=>setTimeout(r,380));
- for(let i=0;i<5;i++) if(!st.held[i]) st.dice[i]=1+Math.floor(Math.random()*6);
- st.rolls++; rolling=false; await patchState(st);
-}
-function scoreFor(cat,d){
- const counts=[0,0,0,0,0,0,0]; d.forEach(x=>counts[x]++);
- const sum=d.reduce((a,b)=>a+b,0), uniq=[...new Set(d)].sort((a,b)=>a-b).join('');
- if(['ones','twos','threes','fours','fives','sixes'].includes(cat)){
-  const n={ones:1,twos:2,threes:3,fours:4,fives:5,sixes:6}[cat]; return counts[n]*n;
- }
- if(cat==='threeKind') return Math.max(...counts)>=3?sum:0;
- if(cat==='fourKind') return Math.max(...counts)>=4?sum:0;
- if(cat==='fullHouse') return counts.includes(3)&&counts.includes(2)?25:0;
- if(cat==='smallStraight') return /1234|2345|3456/.test(uniq)?30:0;
- if(cat==='largeStraight') return uniq==='12345'||uniq==='23456'?40:0;
- if(cat==='kniffel') return Math.max(...counts)===5?50:0;
- return sum;
-}
-function playerScoreObj(p){ return room.state.scores[p.user_id]||{}; }
-function calcTotal(sc){
- const upper=['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(sc[k]??0),0);
- const bonus=upper>=63?35:0;
- const lower=['threeKind','fourKind','fullHouse','smallStraight','largeStraight','kniffel','chance'].reduce((s,k)=>s+(sc[k]??0),0);
- return {upper,bonus,total:upper+bonus+lower};
-}
-function renderScores(){
- const st=room.state, active=players[st.turn], myTurn=active?.user_id===me.id;
- let h='<tr><th>Kategorie</th>'+players.map(p=>`<th>${esc(p.name)}</th>`).join('')+'</tr>';
- for(const [key,label] of CATS){
-  h+=`<tr><td>${label}</td>`;
-  for(const p of players){
-   const sc=playerScoreObj(p);
-   if(sc[key]!==undefined) h+=`<td>${sc[key]}</td>`;
-   else if(myTurn&&p.user_id===me.id&&st.rolls>0) h+=`<td class="option" onclick="chooseScore('${key}')">${scoreFor(key,st.dice)}</td>`;
-   else h+='<td>–</td>';
-  }
-  h+='</tr>';
- }
- h+='<tr class="total"><td>Gesamt</td>'+players.map(p=>`<td>${calcTotal(playerScoreObj(p)).total}</td>`).join('')+'</tr>';
- $('scoreTable').innerHTML=h;
-}
-async function chooseScore(cat){
- const st=structuredClone(room.state), active=players[st.turn];
- if(!active||active.user_id!==me.id||st.rolls===0) return;
- st.scores[me.id] ||= {};
- if(st.scores[me.id][cat]!==undefined) return;
- st.scores[me.id][cat]=scoreFor(cat,st.dice);
- const allDone=players.every(p=>Object.keys(st.scores[p.user_id]||{}).length>=CATS.length);
- if(allDone){st.finished=true; await patchState(st,'finished'); return;}
- st.turn=(st.turn+1)%players.length;
- st.rolls=0; st.dice=[1,1,1,1,1]; st.held=[false,false,false,false,false];
+ let st=structuredClone(state());
+ if(!isMyTurn()||st.rolls>=3||rolling)return;
+ rolling=true;$('rollBtn').disabled=true;
+ [...document.querySelectorAll('.die')].forEach((d,i)=>{if(!st.held[i])d.classList.add('rolling')});
+ await new Promise(r=>setTimeout(r,720));
+ for(let i=0;i<5;i++)if(!st.held[i])st.dice[i]=1+Math.floor(Math.random()*6);
+ st.rolls++;st.hasRolled=true;rolling=false;
+ room.state=st;updateGame();
  await patchState(st);
 }
+async function choose(k,val){
+ let st=structuredClone(state());
+ if(!isMyTurn()||!st.hasRolled)return;
+ const label=categories.find(x=>x[0]===k)[1];
+ if(!confirm(`${label}: ${val} Punkte eintragen?`))return;
+ st.scores[me.id] ||= {};
+ if(st.scores[me.id][k]!==undefined)return;
+ st.scores[me.id][k]=val;
+
+ const allDone=players.every(p=>categories.every(([key])=>(st.scores[p.user_id]||{})[key]!==undefined));
+ if(allDone){st.finished=true;room.state=st;await patchState(st,'finished');return}
+
+ let next=(st.turn+1)%players.length, guard=0;
+ while(categories.every(([key])=>(st.scores[players[next].user_id]||{})[key]!==undefined) && guard<players.length){
+   next=(next+1)%players.length;guard++;
+ }
+ st.turn=next;st.rolls=0;st.hasRolled=false;st.held=[false,false,false,false,false];st.dice=[1,1,1,1,1];
+ room.state=st;updateGame();await patchState(st);
+}
 async function startGame(){
- if(room.host_id!==me.id) return;
- const st=initialState(); players.forEach(p=>st.scores[p.user_id]={});
+ if(room.host_id!==me.id)return;
+ const st=initialState();players.forEach(p=>st.scores[p.user_id]={});
  await patchState(st,'playing');
 }
-function showEnd(){
- hide('gameCard'); show('endCard');
- const res=players.map(p=>({p,t:calcTotal(playerScoreObj(p)).total})).sort((a,b)=>b.t-a.t);
- $('winner').textContent=`Sieger: ${res[0]?.p.name||'–'} mit ${res[0]?.t||0} Punkten`;
- let h='<tr><th>Kategorie</th>'+players.map(p=>`<th>${esc(p.name)}</th>`).join('')+'</tr>';
- for(const [key,label] of CATS) h+=`<tr><td>${label}</td>`+players.map(p=>`<td>${playerScoreObj(p)[key]??'–'}</td>`).join('')+'</tr>';
- h+='<tr class="total"><td>Gesamt</td>'+players.map(p=>`<td>${calcTotal(playerScoreObj(p)).total}</td>`).join('')+'</tr>';
+function finalTable(){
+ let objs=players.map(pObj);
+ let h='<thead><tr><th>Kategorie</th>'+objs.map(p=>`<th>${escapeHtml(p.name)}</th>`).join('')+'</tr></thead><tbody>';
+ function frow(k,label){h+=`<tr><td>${label}</td>`+objs.map(p=>`<td class="${p.scores[k]!==undefined?'used':''}">${p.scores[k]!==undefined?p.scores[k]:'–'}</td>`).join('')+'</tr>'}
+ categories.slice(0,6).forEach(x=>frow(...x));
+ h+=`<tr class="sumrow"><td>Obere Summe</td>${objs.map(p=>`<td>${upper(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="sumrow"><td>Bonus (ab 63)</td>${objs.map(p=>`<td>${bonus(p)}</td>`).join('')}</tr>`;
+ categories.slice(6).forEach(x=>frow(...x));
+ h+=`<tr class="sumrow"><td>Untere Summe</td>${objs.map(p=>`<td>${lower(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="total"><td>GESAMT</td>${objs.map(p=>`<td>${total(p)}</td>`).join('')}</tr></tbody>`;
  $('finalTable').innerHTML=h;
 }
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function showEnd(){
+ hide('setup');hide('lobby');hide('game');show('end');
+ const st=state(),objs=players.map(pObj);
+ $('endTitle').textContent=st.aborted?'Spiel abgebrochen – Zwischenstand':'Spiel beendet';
+ let max=Math.max(...objs.map(total)),wins=objs.filter(p=>total(p)===max);
+ $('winner').textContent=(st.aborted?'Führend: ':(wins.length>1?'Unentschieden: ':'Gewinner: '))+wins.map(p=>p.name).join(' & ');
+ let ranked=[...objs].sort((a,b)=>total(b)-total(a));
+ $('finalScores').innerHTML=ranked.map(p=>`<p><b>${escapeHtml(p.name)}</b>: ${total(p)} Punkte</p>`).join('');
+ finalTable();window.scrollTo({top:0,behavior:'smooth'});
+}
+async function abortOrLeave(){
+ if(room.host_id!==me.id){location.href=location.pathname;return}
+ if(!confirm('Spiel wirklich abbrechen und Auswertung anzeigen?'))return;
+ let st=structuredClone(state());st.aborted=true;st.finished=true;await patchState(st,'finished');
+}
+function renderAll(){
+ if(!room)return;
+ hide('setup');
+ if(room.status==='lobby'){
+   show('lobby');hide('game');hide('end');
+   $('roomCode').textContent=room.code;
+   $('players').innerHTML=players.map(p=>`<span class="pill ${p.user_id===me.id?'me':''}">${escapeHtml(p.name)}${p.user_id===room.host_id?' 👑':''}</span>`).join('');
+   $('startBtn').style.display=room.host_id===me.id?'':'none';
+   $('startBtn').disabled=players.length<1;
+   $('lobbyMsg').textContent=players.length===1?'Warte auf weitere Spieler …':`${players.length} Spieler bereit.`;
+   const url=location.origin+location.pathname+'?room='+room.code;
+   $('inviteUrl').textContent=url;
+ }else if(room.status==='finished'||state().finished){
+   showEnd();
+ }else{
+   hide('lobby');hide('end');show('game');updateGame();
+ }
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
 $('createBtn').onclick=createRoom;
 $('showJoinBtn').onclick=()=>show('joinArea');
 $('joinBtn').onclick=joinRoom;
 $('startBtn').onclick=startGame;
 $('rollBtn').onclick=roll;
-$('leaveBtn').onclick=()=>location.href=location.pathname;
+$('newBtn').onclick=abortOrLeave;
+$('restartBtn').onclick=()=>location.href=location.pathname;
 $('copyBtn').onclick=async()=>{
  const url=location.origin+location.pathname+'?room='+room.code;
- try{await navigator.clipboard.writeText(url); $('copyBtn').textContent='Link kopiert ✓';}catch{prompt('Link kopieren:',url)}
+ try{await navigator.clipboard.writeText(url);$('copyBtn').textContent='Link kopiert ✓';setTimeout(()=>$('copyBtn').textContent='Einladungslink kopieren',1600)}
+ catch{prompt('Link kopieren:',url)}
 };
+
 const qp=new URLSearchParams(location.search).get('room');
-if(qp){ $('codeInput').value=qp.toUpperCase(); show('joinArea'); }
+if(qp){$('codeInput').value=qp.toUpperCase();show('joinArea')}
 </script>
 </body>
 </html>
