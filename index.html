@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Kniffel V5</title>
+<title>Kniffel V7</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -89,7 +89,7 @@ thead th{background:#19283a;position:sticky;top:0;z-index:2}thead th:first-child
 <div class="wrap">
   <h1>🎲 KNIFFEL</h1>
   <div class="subtitle">5 Würfel · 3 Würfe · höchste Punktzahl gewinnt</div>
-  <div class="version">Version V6.0 · Einzelgerät + Mehrgeräte-Multiplayer</div>
+  <div class="version">Version V7.0 · Einzelgerät + gemeinsamer Multiplayer Handler</div>
 
   <section id="modeSelect" class="card">
     <div class="modeGrid">
@@ -336,7 +336,7 @@ async function createRoom(){
  try{
   const name=cleanName();if(!name){$('authMsg').textContent='Bitte Namen eingeben.';return}
   $('authMsg').textContent='Raum wird erstellt …';await ensureAuth();
-  const {data,error}=await sb.rpc('create_kniffel_room',{p_code:randomCode(),p_name:name,p_state:initialState()});
+  const {data,error}=await sb.rpc('create_multiplayer_room',{p_game:'kniffel',p_code:randomCode(),p_name:name,p_state:initialState(),p_max_players:6});
   if(error)throw error;await loadRoom(data);
  }catch(e){$('authMsg').textContent='Fehler: '+e.message}
 }
@@ -345,19 +345,19 @@ async function joinRoom(){
   const name=cleanName(),code=$('codeInput').value.trim().toUpperCase();
   if(!name||code.length!==6){$('authMsg').textContent='Bitte Name und 6-stelligen Raumcode eingeben.';return}
   $('authMsg').textContent='Raum wird geöffnet …';await ensureAuth();
-  const {data,error}=await sb.rpc('join_kniffel_room',{p_code:code,p_name:name});
+  const {data,error}=await sb.rpc('join_multiplayer_room',{p_game:'kniffel',p_code:code,p_name:name});
   if(error)throw error;await loadRoom(data);
  }catch(e){$('authMsg').textContent='Beitreten fehlgeschlagen: '+e.message}
 }
 async function loadRoom(id){
- const {data,error}=await sb.from('kniffel_rooms').select('*').eq('id',id).single();if(error)throw error;
+ const {data,error}=await sb.from('multiplayer_rooms').select('*').eq('id',id).eq('game','kniffel').single();if(error)throw error;
  room=data;await refreshPlayers();subscribe();renderOnlineAll();
 }
-async function refreshPlayers(){const {data,error}=await sb.from('kniffel_players').select('*').eq('room_id',room.id).order('seat');if(error)throw error;players=data||[]}
+async function refreshPlayers(){const {data,error}=await sb.from('multiplayer_players').select('*').eq('room_id',room.id).order('seat');if(error)throw error;players=data||[]}
 function subscribe(){
  if(channel)sb.removeChannel(channel);
- channel=sb.channel('kniffel-'+room.id)
- .on('postgres_changes',{event:'UPDATE',schema:'public',table:'kniffel_rooms',filter:'id=eq.'+room.id},async p=>{
+ channel=sb.channel('multiplayer-kniffel-'+room.id)
+ .on('postgres_changes',{event:'UPDATE',schema:'public',table:'multiplayer_rooms',filter:'id=eq.'+room.id},async p=>{
    const incoming=p.new;
    if(onlineHeldDraft && incoming.status==='playing'){
      const active=players[incoming.state?.turn];
@@ -369,9 +369,9 @@ function subscribe(){
    }
    room=incoming;await refreshPlayers();renderOnlineAll();
  })
- .on('postgres_changes',{event:'*',schema:'public',table:'kniffel_players',filter:'room_id=eq.'+room.id},async()=>{await refreshPlayers();renderOnlineAll()}).subscribe();
+ .on('postgres_changes',{event:'*',schema:'public',table:'multiplayer_players',filter:'room_id=eq.'+room.id},async()=>{await refreshPlayers();renderOnlineAll()}).subscribe();
 }
-async function patchState(state,status=room.status){const {error}=await sb.rpc('update_kniffel_room',{p_room:room.id,p_state:state,p_status:status});if(error)alert(error.message)}
+async function patchState(state,status=room.status){const {error}=await sb.rpc('update_multiplayer_room',{p_room:room.id,p_state:state,p_status:status});if(error)alert(error.message)}
 function state(){return room.state||initialState()}
 function scoreObj(p){return state().scores?.[p.user_id]||{}}
 function pObj(p){return {name:p.name,scores:scoreObj(p),user_id:p.user_id}}
