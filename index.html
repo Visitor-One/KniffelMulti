@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Kniffel Multiplayer V4</title>
+<title>Kniffel V5</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -27,13 +27,17 @@ h1{margin:5px 0 3px;text-align:center;font-size:clamp(30px,7vw,50px)}
 .card{background:linear-gradient(145deg,rgba(25,39,56,.97),rgba(13,22,33,.97));
  border:1px solid #2a3b50;border-radius:20px;padding:16px;box-shadow:0 14px 35px #0007;margin-bottom:14px}
 .setupRow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
-input{background:#0c1520;color:white;border:1px solid #34475f;border-radius:12px;padding:12px;width:100%}
+select,input{background:#0c1520;color:white;border:1px solid #34475f;border-radius:12px;padding:12px}
+input{width:100%}.names{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
 .btn{border:0;border-radius:14px;padding:13px 18px;font-weight:800;background:var(--accent);color:#07150f;box-shadow:0 5px 0 #278a68;cursor:pointer}
 .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #278a68}
 .btn.secondary{background:#27384c;color:white;box-shadow:0 5px 0 #14202e}
 .btn.danger{background:#ff7373;color:#2b0808;box-shadow:0 5px 0 #a43838}
 .btn:disabled{opacity:.45;cursor:default;transform:none}
 .hidden{display:none!important}
+.modeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.modeBtn{padding:20px 14px;min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+.modeBtn b{font-size:20px}.modeBtn span{font-size:13px;font-weight:600;opacity:.82;text-align:center}
 .topline{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .player{font-size:22px;font-weight:900}.rollCount{color:var(--gold);font-weight:800}
 .diceArea{display:flex;justify-content:center;gap:clamp(7px,2vw,18px);flex-wrap:nowrap;margin:20px 0 15px;perspective:900px}
@@ -77,16 +81,45 @@ thead th{background:#19283a;position:sticky;top:0;z-index:2}thead th:first-child
 .pill.me{box-shadow:0 0 0 2px var(--accent)}
 .status{text-align:center;color:var(--muted);margin-top:10px;min-height:20px}
 .invite{word-break:break-all;text-align:center;color:var(--muted);font-size:12px;margin-top:10px}
-@media(max-width:520px){.card{padding:12px}.options{grid-template-columns:1fr}.die{border-width:2px}.player{font-size:19px}}
+@media(max-width:520px){.card{padding:12px}.names{grid-template-columns:1fr}.options{grid-template-columns:1fr}.modeGrid{grid-template-columns:1fr}.die{border-width:2px}.player{font-size:19px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🎲 KNIFFEL</h1>
   <div class="subtitle">5 Würfel · 3 Würfe · höchste Punktzahl gewinnt</div>
-  <div class="version">Multiplayer V4.0 · Supabase Realtime</div>
+  <div class="version">Version V5.0 · Einzelgerät + Mehrgeräte-Multiplayer</div>
 
-  <section id="setup" class="card">
+  <section id="modeSelect" class="card">
+    <div class="modeGrid">
+      <button class="btn modeBtn" id="localModeBtn">
+        <b>📱 Ein Gerät</b>
+        <span>1–6 Spieler auf demselben Gerät, auch alleine spielbar</span>
+      </button>
+      <button class="btn secondary modeBtn" id="onlineModeBtn">
+        <b>🌐 Mehrere Geräte</b>
+        <span>Jeder spielt auf seinem eigenen Gerät über Supabase</span>
+      </button>
+    </div>
+  </section>
+
+  <section id="localSetup" class="card hidden">
+    <div class="setupRow">
+      <label>Spieler:
+        <select id="playerCount">
+          <option>1</option><option selected>2</option><option>3</option>
+          <option>4</option><option>5</option><option>6</option>
+        </select>
+      </label>
+    </div>
+    <div id="names" class="names"></div>
+    <div class="setupRow" style="margin-top:14px">
+      <button class="btn secondary" id="backLocalBtn">Zurück</button>
+      <button class="btn" id="localStartBtn">Spiel starten</button>
+    </div>
+  </section>
+
+  <section id="onlineSetup" class="card hidden">
     <input id="nameInput" maxlength="18" placeholder="Dein Name">
     <div class="setupRow" style="margin-top:12px">
       <button class="btn" id="createBtn">Spiel erstellen</button>
@@ -96,6 +129,7 @@ thead th{background:#19283a;position:sticky;top:0;z-index:2}thead th:first-child
       <input id="codeInput" maxlength="6" placeholder="Raumcode" autocapitalize="characters">
       <div class="setupRow" style="margin-top:10px"><button class="btn" id="joinBtn">Raum beitreten</button></div>
     </div>
+    <div class="setupRow" style="margin-top:10px"><button class="btn secondary" id="backOnlineBtn">Zurück</button></div>
     <div id="authMsg" class="status"></div>
   </section>
 
@@ -155,100 +189,29 @@ const categories=[
  ['smallStraight','Kleine Straße'],['largeStraight','Große Straße'],['yahtzee','Kniffel'],['chance','Chance']
 ];
 
+let mode=null;
+let localPlayers=[],localCurrent=0,localRolls=0,localDice=[1,1,1,1,1],localHeld=[false,false,false,false,false],localHasRolled=false;
 let me=null,room=null,players=[],channel=null,rolling=false;
+
 const $=id=>document.getElementById(id);
 const show=id=>$(id).classList.remove('hidden');
 const hide=id=>$(id).classList.add('hidden');
 
-function initialState(){
-  return {turn:0,rolls:0,dice:[1,1,1,1,1],held:[false,false,false,false,false],hasRolled:false,scores:{},aborted:false,finished:false};
+function makeNames(){
+ let n=+$('playerCount').value,box=$('names');box.innerHTML='';
+ for(let i=0;i<n;i++){
+   let x=document.createElement('input');
+   x.placeholder='Name Spieler '+(i+1);
+   x.value=n===1?'Spieler 1':'Spieler '+(i+1);
+   x.id='name'+i; box.appendChild(x);
+ }
 }
-async function ensureAuth(){
-  let {data:{session}}=await sb.auth.getSession();
-  if(!session){
-    const {data,error}=await sb.auth.signInAnonymously();
-    if(error) throw error;
-    session=data.session;
-  }
-  me=session.user;
-}
-function cleanName(){return $('nameInput').value.trim().slice(0,18)}
-function randomCode(){
-  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
-}
-async function createRoom(){
-  try{
-    const name=cleanName(); if(!name){$('authMsg').textContent='Bitte Namen eingeben.';return}
-    $('authMsg').textContent='Raum wird erstellt …';
-    await ensureAuth();
-    const {data,error}=await sb.rpc('create_kniffel_room',{p_code:randomCode(),p_name:name,p_state:initialState()});
-    if(error) throw error;
-    await loadRoom(data);
-  }catch(e){$('authMsg').textContent='Fehler: '+e.message}
-}
-async function joinRoom(){
-  try{
-    const name=cleanName(),code=$('codeInput').value.trim().toUpperCase();
-    if(!name||code.length!==6){$('authMsg').textContent='Bitte Name und 6-stelligen Raumcode eingeben.';return}
-    $('authMsg').textContent='Raum wird geöffnet …';
-    await ensureAuth();
-    const {data,error}=await sb.rpc('join_kniffel_room',{p_code:code,p_name:name});
-    if(error) throw error;
-    await loadRoom(data);
-  }catch(e){$('authMsg').textContent='Beitreten fehlgeschlagen: '+e.message}
-}
-async function loadRoom(id){
-  const {data,error}=await sb.from('kniffel_rooms').select('*').eq('id',id).single();
-  if(error) throw error;
-  room=data;
-  await refreshPlayers();
-  subscribe();
-  renderAll();
-}
-async function refreshPlayers(){
-  const {data,error}=await sb.from('kniffel_players').select('*').eq('room_id',room.id).order('seat');
-  if(error) throw error;
-  players=data||[];
-}
-function subscribe(){
-  if(channel) sb.removeChannel(channel);
-  channel=sb.channel('kniffel-'+room.id)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'kniffel_rooms',filter:'id=eq.'+room.id},async p=>{
-      room=p.new; await refreshPlayers(); renderAll();
-    })
-    .on('postgres_changes',{event:'*',schema:'public',table:'kniffel_players',filter:'room_id=eq.'+room.id},async()=>{
-      await refreshPlayers(); renderAll();
-    }).subscribe();
-}
-async function patchState(state,status=room.status){
-  const {error}=await sb.rpc('update_kniffel_room',{p_room:room.id,p_state:state,p_status:status});
-  if(error) alert(error.message);
-}
-function state(){return room.state||initialState()}
-function scoreObj(p){return state().scores?.[p.user_id]||{}}
-function pObj(p){return {name:p.name,scores:scoreObj(p),user_id:p.user_id}}
-function isMyTurn(){const st=state(),p=players[st.turn];return !!p&&p.user_id===me?.id}
+$('playerCount').onchange=makeNames;makeNames();
 
 function pips(n){
  const maps={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
  return maps[n].map(x=>`<i class="pip p${x}"></i>`).join('');
 }
-function renderDice(){
- const st=state(); $('dice').innerHTML='';
- st.dice.forEach((v,i)=>{
-   let d=document.createElement('div');d.className='die'+(st.held[i]?' held':'');d.innerHTML=pips(v);
-   d.onclick=()=>toggleHold(i); $('dice').appendChild(d);
- });
-}
-async function toggleHold(i){
-  const st=structuredClone(state());
-  if(!isMyTurn()||!st.hasRolled||rolling)return;
-  st.held[i]=!st.held[i];
-  room.state=st; renderDice();
-  await patchState(st);
-}
-
 function score(cat,ds){
  let c=[0,0,0,0,0,0,0];ds.forEach(v=>c[v]++);let sum=ds.reduce((a,b)=>a+b,0);
  if(['ones','twos','threes','fours','fives','sixes'].includes(cat)){let n=['ones','twos','threes','fours','fives','sixes'].indexOf(cat)+1;return c[n]*n}
@@ -263,97 +226,214 @@ function score(cat,ds){
  return 0;
 }
 function upper(p){return ['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(p.scores[k]??0),0)}
-function upperDisplay(k,val){
- const keys=['ones','twos','threes','fours','fives','sixes'];const idx=keys.indexOf(k);
- return idx>=0?`${val} / ${(idx+1)*5}`:`${val}`;
-}
+function upperDisplay(k,val){const keys=['ones','twos','threes','fours','fives','sixes'];const idx=keys.indexOf(k);return idx>=0?`${val} / ${(idx+1)*5}`:`${val}`}
 function bonus(p){return upper(p)>=63?35:0}
 function lower(p){return ['threeKind','fourKind','fullHouse','smallStraight','largeStraight','yahtzee','chance'].reduce((s,k)=>s+(p.scores[k]??0),0)}
 function total(p){return upper(p)+bonus(p)+lower(p)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
-function renderOptions(){
+/* ---------- EIN GERÄT ---------- */
+function renderLocalDice(){
+ $('dice').innerHTML='';
+ localDice.forEach((v,i)=>{
+   let d=document.createElement('div');
+   d.className='die'+(localHeld[i]?' held':'');
+   d.innerHTML=pips(v);
+   d.onclick=()=>{if(!localHasRolled)return;localHeld[i]=!localHeld[i];renderLocalDice()};
+   $('dice').appendChild(d);
+ });
+}
+function renderLocalOptions(){
+ let o=$('options');o.innerHTML='';
+ if(!localHasRolled){o.innerHTML='<div class="small">Nach dem ersten Wurf erscheinen hier die Wertungen.</div>';return}
+ let p=localPlayers[localCurrent];
+ categories.filter(([k])=>p.scores[k]===undefined).forEach(([k,label])=>{
+   let val=score(k,localDice),b=document.createElement('button');
+   b.className='option'+(val===0?' zero':'');
+   b.innerHTML=`<span>${label}</span><strong>${upperDisplay(k,val)}</strong>`;
+   b.onclick=()=>localChoose(k,val);o.appendChild(b);
+ });
+}
+function renderLocalTable(){
+ let h='<thead><tr><th>Kategorie</th>'+localPlayers.map((p,i)=>`<th class="${i===localCurrent?'activeCol':''}">${escapeHtml(p.name)}</th>`).join('')+'</tr></thead><tbody>';
+ function row(k,label){
+  h+=`<tr><td>${label}</td>`+localPlayers.map((p,i)=>{
+    let v=p.scores[k];
+    if(v!==undefined)return `<td class="used ${i===localCurrent?'activeCol':''}">${v}</td>`;
+    if(i===localCurrent&&localHasRolled){let pv=score(k,localDice);return `<td class="preview activeCol">${upperDisplay(k,pv)}</td>`}
+    return `<td class="${i===localCurrent?'activeCol':''}">–</td>`;
+  }).join('')+'</tr>';
+ }
+ categories.slice(0,6).forEach(x=>row(...x));
+ h+=`<tr class="sumrow"><td>Obere Summe</td>${localPlayers.map((p,i)=>`<td class="${i===localCurrent?'activeCol':''}">${upper(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="sumrow"><td>Bonus (ab 63)</td>${localPlayers.map((p,i)=>`<td class="${i===localCurrent?'activeCol':''}">${bonus(p)}</td>`).join('')}</tr>`;
+ categories.slice(6).forEach(x=>row(...x));
+ h+=`<tr class="sumrow"><td>Untere Summe</td>${localPlayers.map((p,i)=>`<td class="${i===localCurrent?'activeCol':''}">${lower(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="total"><td>GESAMT</td>${localPlayers.map((p,i)=>`<td class="${i===localCurrent?'activeCol':''}">${total(p)}</td>`).join('')}</tr></tbody>`;
+ $('scoreTable').innerHTML=h;
+}
+function updateLocal(){
+ $('currentPlayer').textContent=localPlayers[localCurrent]?.name||'';
+ $('rollNo').textContent=localRolls;
+ $('rollBtn').disabled=localRolls>=3||rolling;
+ $('rollBtn').style.opacity=$('rollBtn').disabled?'.45':'1';
+ $('rollBtn').textContent=localRolls===0?'🎲 Würfeln':localRolls<3?'🎲 Weiter würfeln':'3 Würfe verbraucht';
+ $('hint').textContent=!localHasRolled?'Erster Wurf: alle fünf Würfel werden gewürfelt.':
+   localRolls<3?'Würfel antippen, um sie zu behalten. Danach weiterwürfeln oder Wertung auswählen.':
+   'Dritter Wurf: jetzt eine Kategorie auswählen.';
+ renderLocalDice();renderLocalOptions();renderLocalTable();
+}
+async function localRoll(){
+ if(localRolls>=3||rolling)return;
+ rolling=true;$('rollBtn').disabled=true;
+ [...document.querySelectorAll('.die')].forEach((d,i)=>{if(!localHeld[i])d.classList.add('rolling')});
+ await new Promise(r=>setTimeout(r,720));
+ for(let i=0;i<5;i++)if(!localHeld[i])localDice[i]=1+Math.floor(Math.random()*6);
+ localRolls++;localHasRolled=true;rolling=false;updateLocal();
+}
+function localChoose(k,val){
+ let label=categories.find(x=>x[0]===k)[1];
+ if(!confirm(`${label}: ${val} Punkte eintragen?`))return;
+ localPlayers[localCurrent].scores[k]=val;
+ if(localPlayers.every(p=>categories.every(([key])=>p.scores[key]!==undefined))){showLocalEnd(false);return}
+ localCurrent=(localCurrent+1)%localPlayers.length;
+ while(categories.every(([key])=>localPlayers[localCurrent].scores[key]!==undefined))localCurrent=(localCurrent+1)%localPlayers.length;
+ localRolls=0;localHasRolled=false;localHeld=[false,false,false,false,false];localDice=[1,1,1,1,1];updateLocal();
+}
+function localFinalTable(){
+ let h='<thead><tr><th>Kategorie</th>'+localPlayers.map(p=>`<th>${escapeHtml(p.name)}</th>`).join('')+'</tr></thead><tbody>';
+ function frow(k,label){h+=`<tr><td>${label}</td>`+localPlayers.map(p=>`<td class="${p.scores[k]!==undefined?'used':''}">${p.scores[k]!==undefined?p.scores[k]:'–'}</td>`).join('')+'</tr>'}
+ categories.slice(0,6).forEach(x=>frow(...x));
+ h+=`<tr class="sumrow"><td>Obere Summe</td>${localPlayers.map(p=>`<td>${upper(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="sumrow"><td>Bonus (ab 63)</td>${localPlayers.map(p=>`<td>${bonus(p)}</td>`).join('')}</tr>`;
+ categories.slice(6).forEach(x=>frow(...x));
+ h+=`<tr class="sumrow"><td>Untere Summe</td>${localPlayers.map(p=>`<td>${lower(p)}</td>`).join('')}</tr>`;
+ h+=`<tr class="total"><td>GESAMT</td>${localPlayers.map(p=>`<td>${total(p)}</td>`).join('')}</tr></tbody>`;
+ $('finalTable').innerHTML=h;
+}
+function showLocalEnd(aborted=false){
+ hide('game');show('end');
+ $('endTitle').textContent=aborted?'Spiel abgebrochen – Zwischenstand':'Spiel beendet';
+ let max=Math.max(...localPlayers.map(total)),wins=localPlayers.filter(p=>total(p)===max);
+ $('winner').textContent=(aborted?'Führend: ':(wins.length>1?'Unentschieden: ':'Gewinner: '))+wins.map(p=>p.name).join(' & ');
+ let ranked=[...localPlayers].sort((a,b)=>total(b)-total(a));
+ $('finalScores').innerHTML=ranked.map(p=>`<p><b>${escapeHtml(p.name)}</b>: ${total(p)} Punkte</p>`).join('');
+ localFinalTable();window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- MEHRERE GERÄTE ---------- */
+function initialState(){return {turn:0,rolls:0,dice:[1,1,1,1,1],held:[false,false,false,false,false],hasRolled:false,scores:{},aborted:false,finished:false}}
+async function ensureAuth(){
+ let {data:{session}}=await sb.auth.getSession();
+ if(!session){const {data,error}=await sb.auth.signInAnonymously();if(error)throw error;session=data.session}
+ me=session.user;
+}
+function cleanName(){return $('nameInput').value.trim().slice(0,18)}
+function randomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('')}
+async function createRoom(){
+ try{
+  const name=cleanName();if(!name){$('authMsg').textContent='Bitte Namen eingeben.';return}
+  $('authMsg').textContent='Raum wird erstellt …';await ensureAuth();
+  const {data,error}=await sb.rpc('create_kniffel_room',{p_code:randomCode(),p_name:name,p_state:initialState()});
+  if(error)throw error;await loadRoom(data);
+ }catch(e){$('authMsg').textContent='Fehler: '+e.message}
+}
+async function joinRoom(){
+ try{
+  const name=cleanName(),code=$('codeInput').value.trim().toUpperCase();
+  if(!name||code.length!==6){$('authMsg').textContent='Bitte Name und 6-stelligen Raumcode eingeben.';return}
+  $('authMsg').textContent='Raum wird geöffnet …';await ensureAuth();
+  const {data,error}=await sb.rpc('join_kniffel_room',{p_code:code,p_name:name});
+  if(error)throw error;await loadRoom(data);
+ }catch(e){$('authMsg').textContent='Beitreten fehlgeschlagen: '+e.message}
+}
+async function loadRoom(id){
+ const {data,error}=await sb.from('kniffel_rooms').select('*').eq('id',id).single();if(error)throw error;
+ room=data;await refreshPlayers();subscribe();renderOnlineAll();
+}
+async function refreshPlayers(){const {data,error}=await sb.from('kniffel_players').select('*').eq('room_id',room.id).order('seat');if(error)throw error;players=data||[]}
+function subscribe(){
+ if(channel)sb.removeChannel(channel);
+ channel=sb.channel('kniffel-'+room.id)
+ .on('postgres_changes',{event:'UPDATE',schema:'public',table:'kniffel_rooms',filter:'id=eq.'+room.id},async p=>{room=p.new;await refreshPlayers();renderOnlineAll()})
+ .on('postgres_changes',{event:'*',schema:'public',table:'kniffel_players',filter:'room_id=eq.'+room.id},async()=>{await refreshPlayers();renderOnlineAll()}).subscribe();
+}
+async function patchState(state,status=room.status){const {error}=await sb.rpc('update_kniffel_room',{p_room:room.id,p_state:state,p_status:status});if(error)alert(error.message)}
+function state(){return room.state||initialState()}
+function scoreObj(p){return state().scores?.[p.user_id]||{}}
+function pObj(p){return {name:p.name,scores:scoreObj(p),user_id:p.user_id}}
+function isMyTurn(){const st=state(),p=players[st.turn];return !!p&&p.user_id===me?.id}
+function renderOnlineDice(){
+ const st=state();$('dice').innerHTML='';
+ st.dice.forEach((v,i)=>{let d=document.createElement('div');d.className='die'+(st.held[i]?' held':'');d.innerHTML=pips(v);d.onclick=()=>toggleOnlineHold(i);$('dice').appendChild(d)});
+}
+async function toggleOnlineHold(i){
+ const st=structuredClone(state());if(!isMyTurn()||!st.hasRolled||rolling)return;
+ st.held[i]=!st.held[i];room.state=st;renderOnlineDice();await patchState(st);
+}
+function renderOnlineOptions(){
  let o=$('options'),st=state();o.innerHTML='';
  if(!st.hasRolled){o.innerHTML='<div class="small">Nach dem ersten Wurf erscheinen hier die Wertungen.</div>';return}
  if(!isMyTurn()){o.innerHTML='<div class="small">Der andere Spieler ist am Zug.</div>';return}
  let p=pObj(players[st.turn]);
  categories.filter(([k])=>p.scores[k]===undefined).forEach(([k,label])=>{
-   let val=score(k,st.dice),b=document.createElement('button');b.className='option'+(val===0?' zero':'');
-   b.innerHTML=`<span>${label}</span><strong>${upperDisplay(k,val)}</strong>`;
-   b.onclick=()=>choose(k,val);o.appendChild(b);
+  let val=score(k,st.dice),b=document.createElement('button');b.className='option'+(val===0?' zero':'');
+  b.innerHTML=`<span>${label}</span><strong>${upperDisplay(k,val)}</strong>`;b.onclick=()=>onlineChoose(k,val);o.appendChild(b);
  });
 }
-function renderTable(){
- let t=$('scoreTable'),st=state();
- let objs=players.map(pObj);
+function renderOnlineTable(){
+ let st=state(),objs=players.map(pObj);
  let h='<thead><tr><th>Kategorie</th>'+objs.map((p,i)=>`<th class="${i===st.turn?'activeCol':''}">${escapeHtml(p.name)}</th>`).join('')+'</tr></thead><tbody>';
- function row(k,label){
-   h+=`<tr><td>${label}</td>`+objs.map((p,i)=>{
-     let v=p.scores[k];
-     if(v!==undefined)return `<td class="used ${i===st.turn?'activeCol':''}">${v}</td>`;
-     if(i===st.turn&&st.hasRolled){let pv=score(k,st.dice);return `<td class="preview activeCol">${upperDisplay(k,pv)}</td>`}
-     return `<td class="${i===st.turn?'activeCol':''}">–</td>`;
-   }).join('')+'</tr>';
- }
+ function row(k,label){h+=`<tr><td>${label}</td>`+objs.map((p,i)=>{
+  let v=p.scores[k];if(v!==undefined)return `<td class="used ${i===st.turn?'activeCol':''}">${v}</td>`;
+  if(i===st.turn&&st.hasRolled){let pv=score(k,st.dice);return `<td class="preview activeCol">${upperDisplay(k,pv)}</td>`}
+  return `<td class="${i===st.turn?'activeCol':''}">–</td>`;
+ }).join('')+'</tr>'}
  categories.slice(0,6).forEach(x=>row(...x));
  h+=`<tr class="sumrow"><td>Obere Summe</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${upper(p)}</td>`).join('')}</tr>`;
  h+=`<tr class="sumrow"><td>Bonus (ab 63)</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${bonus(p)}</td>`).join('')}</tr>`;
  categories.slice(6).forEach(x=>row(...x));
  h+=`<tr class="sumrow"><td>Untere Summe</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${lower(p)}</td>`).join('')}</tr>`;
  h+=`<tr class="total"><td>GESAMT</td>${objs.map((p,i)=>`<td class="${i===st.turn?'activeCol':''}">${total(p)}</td>`).join('')}</tr></tbody>`;
- t.innerHTML=h;
+ $('scoreTable').innerHTML=h;
 }
-function updateGame(){
- const st=state(),active=players[st.turn];
- $('currentPlayer').textContent=active?.name||'';
- $('rollNo').textContent=st.rolls;
- const mine=isMyTurn();
- $('rollBtn').disabled=!mine||st.rolls>=3||rolling;
- $('rollBtn').style.opacity=$('rollBtn').disabled?'.45':'1';
+function updateOnlineGame(){
+ const st=state(),active=players[st.turn],mine=isMyTurn();
+ $('currentPlayer').textContent=active?.name||'';$('rollNo').textContent=st.rolls;
+ $('rollBtn').disabled=!mine||st.rolls>=3||rolling;$('rollBtn').style.opacity=$('rollBtn').disabled?'.45':'1';
  $('rollBtn').textContent=st.rolls===0?'🎲 Würfeln':st.rolls<3?'🎲 Weiter würfeln':'3 Würfe verbraucht';
- $('hint').textContent=!mine?`Warte auf ${active?.name||'den anderen Spieler'} …`:
-   !st.hasRolled?'Erster Wurf: alle fünf Würfel werden gewürfelt.':
-   st.rolls<3?'Würfel antippen, um sie zu behalten. Danach weiterwürfeln oder Wertung auswählen.':
-   'Dritter Wurf: jetzt eine Kategorie auswählen.';
+ $('hint').textContent=!mine?`Warte auf ${active?.name||'den anderen Spieler'} …`:!st.hasRolled?'Erster Wurf: alle fünf Würfel werden gewürfelt.':
+ st.rolls<3?'Würfel antippen, um sie zu behalten. Danach weiterwürfeln oder Wertung auswählen.':'Dritter Wurf: jetzt eine Kategorie auswählen.';
  $('newBtn').textContent=room.host_id===me.id?'Spiel abbrechen':'Spiel verlassen';
- renderDice();renderOptions();renderTable();
+ renderOnlineDice();renderOnlineOptions();renderOnlineTable();
 }
-async function roll(){
- let st=structuredClone(state());
- if(!isMyTurn()||st.rolls>=3||rolling)return;
- rolling=true;$('rollBtn').disabled=true;
- [...document.querySelectorAll('.die')].forEach((d,i)=>{if(!st.held[i])d.classList.add('rolling')});
+async function onlineRoll(){
+ let st=structuredClone(state());if(!isMyTurn()||st.rolls>=3||rolling)return;
+ rolling=true;$('rollBtn').disabled=true;[...document.querySelectorAll('.die')].forEach((d,i)=>{if(!st.held[i])d.classList.add('rolling')});
  await new Promise(r=>setTimeout(r,720));
  for(let i=0;i<5;i++)if(!st.held[i])st.dice[i]=1+Math.floor(Math.random()*6);
- st.rolls++;st.hasRolled=true;rolling=false;
- room.state=st;updateGame();
- await patchState(st);
+ st.rolls++;st.hasRolled=true;rolling=false;room.state=st;updateOnlineGame();await patchState(st);
 }
-async function choose(k,val){
- let st=structuredClone(state());
- if(!isMyTurn()||!st.hasRolled)return;
- const label=categories.find(x=>x[0]===k)[1];
- if(!confirm(`${label}: ${val} Punkte eintragen?`))return;
- st.scores[me.id] ||= {};
- if(st.scores[me.id][k]!==undefined)return;
- st.scores[me.id][k]=val;
-
+async function onlineChoose(k,val){
+ let st=structuredClone(state());if(!isMyTurn()||!st.hasRolled)return;
+ const label=categories.find(x=>x[0]===k)[1];if(!confirm(`${label}: ${val} Punkte eintragen?`))return;
+ st.scores[me.id] ||= {};if(st.scores[me.id][k]!==undefined)return;st.scores[me.id][k]=val;
  const allDone=players.every(p=>categories.every(([key])=>(st.scores[p.user_id]||{})[key]!==undefined));
  if(allDone){st.finished=true;room.state=st;await patchState(st,'finished');return}
-
- let next=(st.turn+1)%players.length, guard=0;
- while(categories.every(([key])=>(st.scores[players[next].user_id]||{})[key]!==undefined) && guard<players.length){
-   next=(next+1)%players.length;guard++;
- }
+ let next=(st.turn+1)%players.length,guard=0;
+ while(categories.every(([key])=>(st.scores[players[next].user_id]||{})[key]!==undefined)&&guard<players.length){next=(next+1)%players.length;guard++}
  st.turn=next;st.rolls=0;st.hasRolled=false;st.held=[false,false,false,false,false];st.dice=[1,1,1,1,1];
- room.state=st;updateGame();await patchState(st);
+ room.state=st;updateOnlineGame();await patchState(st);
 }
-async function startGame(){
- if(room.host_id!==me.id)return;
- const st=initialState();players.forEach(p=>st.scores[p.user_id]={});
- await patchState(st,'playing');
-}
-function finalTable(){
- let objs=players.map(pObj);
+async function startOnlineGame(){if(room.host_id!==me.id)return;const st=initialState();players.forEach(p=>st.scores[p.user_id]={});await patchState(st,'playing')}
+function showOnlineEnd(){
+ hide('game');hide('lobby');show('end');
+ const st=state(),objs=players.map(pObj);
+ $('endTitle').textContent=st.aborted?'Spiel abgebrochen – Zwischenstand':'Spiel beendet';
+ let max=Math.max(...objs.map(total)),wins=objs.filter(p=>total(p)===max);
+ $('winner').textContent=(st.aborted?'Führend: ':(wins.length>1?'Unentschieden: ':'Gewinner: '))+wins.map(p=>p.name).join(' & ');
+ let ranked=[...objs].sort((a,b)=>total(b)-total(a));
+ $('finalScores').innerHTML=ranked.map(p=>`<p><b>${escapeHtml(p.name)}</b>: ${total(p)} Punkte</p>`).join('');
  let h='<thead><tr><th>Kategorie</th>'+objs.map(p=>`<th>${escapeHtml(p.name)}</th>`).join('')+'</tr></thead><tbody>';
  function frow(k,label){h+=`<tr><td>${label}</td>`+objs.map(p=>`<td class="${p.scores[k]!==undefined?'used':''}">${p.scores[k]!==undefined?p.scores[k]:'–'}</td>`).join('')+'</tr>'}
  categories.slice(0,6).forEach(x=>frow(...x));
@@ -362,49 +442,46 @@ function finalTable(){
  categories.slice(6).forEach(x=>frow(...x));
  h+=`<tr class="sumrow"><td>Untere Summe</td>${objs.map(p=>`<td>${lower(p)}</td>`).join('')}</tr>`;
  h+=`<tr class="total"><td>GESAMT</td>${objs.map(p=>`<td>${total(p)}</td>`).join('')}</tr></tbody>`;
- $('finalTable').innerHTML=h;
+ $('finalTable').innerHTML=h;window.scrollTo({top:0,behavior:'smooth'});
 }
-function showEnd(){
- hide('setup');hide('lobby');hide('game');show('end');
- const st=state(),objs=players.map(pObj);
- $('endTitle').textContent=st.aborted?'Spiel abgebrochen – Zwischenstand':'Spiel beendet';
- let max=Math.max(...objs.map(total)),wins=objs.filter(p=>total(p)===max);
- $('winner').textContent=(st.aborted?'Führend: ':(wins.length>1?'Unentschieden: ':'Gewinner: '))+wins.map(p=>p.name).join(' & ');
- let ranked=[...objs].sort((a,b)=>total(b)-total(a));
- $('finalScores').innerHTML=ranked.map(p=>`<p><b>${escapeHtml(p.name)}</b>: ${total(p)} Punkte</p>`).join('');
- finalTable();window.scrollTo({top:0,behavior:'smooth'});
-}
-async function abortOrLeave(){
+async function abortOrLeaveOnline(){
  if(room.host_id!==me.id){location.href=location.pathname;return}
  if(!confirm('Spiel wirklich abbrechen und Auswertung anzeigen?'))return;
  let st=structuredClone(state());st.aborted=true;st.finished=true;await patchState(st,'finished');
 }
-function renderAll(){
- if(!room)return;
- hide('setup');
+function renderOnlineAll(){
+ hide('modeSelect');hide('onlineSetup');hide('localSetup');
  if(room.status==='lobby'){
-   show('lobby');hide('game');hide('end');
-   $('roomCode').textContent=room.code;
-   $('players').innerHTML=players.map(p=>`<span class="pill ${p.user_id===me.id?'me':''}">${escapeHtml(p.name)}${p.user_id===room.host_id?' 👑':''}</span>`).join('');
-   $('startBtn').style.display=room.host_id===me.id?'':'none';
-   $('startBtn').disabled=players.length<1;
-   $('lobbyMsg').textContent=players.length===1?'Warte auf weitere Spieler …':`${players.length} Spieler bereit.`;
-   const url=location.origin+location.pathname+'?room='+room.code;
-   $('inviteUrl').textContent=url;
- }else if(room.status==='finished'||state().finished){
-   showEnd();
- }else{
-   hide('lobby');hide('end');show('game');updateGame();
- }
+  show('lobby');hide('game');hide('end');
+  $('roomCode').textContent=room.code;
+  $('players').innerHTML=players.map(p=>`<span class="pill ${p.user_id===me.id?'me':''}">${escapeHtml(p.name)}${p.user_id===room.host_id?' 👑':''}</span>`).join('');
+  $('startBtn').style.display=room.host_id===me.id?'':'none';
+  $('lobbyMsg').textContent=players.length===1?'Warte auf weitere Spieler …':`${players.length} Spieler bereit.`;
+  const url=location.origin+location.pathname+'?room='+room.code;$('inviteUrl').textContent=url;
+ }else if(room.status==='finished'||state().finished){showOnlineEnd()}
+ else{hide('lobby');hide('end');show('game');updateOnlineGame()}
 }
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
+/* ---------- UI ---------- */
+$('localModeBtn').onclick=()=>{mode='local';hide('modeSelect');show('localSetup')}
+$('onlineModeBtn').onclick=()=>{mode='online';hide('modeSelect');show('onlineSetup')}
+$('backLocalBtn').onclick=()=>{hide('localSetup');show('modeSelect')}
+$('backOnlineBtn').onclick=()=>{hide('onlineSetup');show('modeSelect')}
+$('localStartBtn').onclick=()=>{
+ mode='local';let n=+$('playerCount').value;
+ localPlayers=Array.from({length:n},(_,i)=>({name:$('name'+i).value.trim()||'Spieler '+(i+1),scores:{}}));
+ localCurrent=0;localRolls=0;localDice=[1,1,1,1,1];localHeld=[false,false,false,false,false];localHasRolled=false;
+ hide('localSetup');hide('modeSelect');show('game');$('newBtn').textContent='Spiel abbrechen';updateLocal();
+}
 $('createBtn').onclick=createRoom;
 $('showJoinBtn').onclick=()=>show('joinArea');
 $('joinBtn').onclick=joinRoom;
-$('startBtn').onclick=startGame;
-$('rollBtn').onclick=roll;
-$('newBtn').onclick=abortOrLeave;
+$('startBtn').onclick=startOnlineGame;
+$('rollBtn').onclick=()=>mode==='local'?localRoll():onlineRoll();
+$('newBtn').onclick=()=>{
+ if(mode==='local'){if(confirm('Spiel wirklich abbrechen und Auswertung anzeigen?'))showLocalEnd(true)}
+ else abortOrLeaveOnline();
+}
 $('restartBtn').onclick=()=>location.href=location.pathname;
 $('copyBtn').onclick=async()=>{
  const url=location.origin+location.pathname+'?room='+room.code;
@@ -413,7 +490,9 @@ $('copyBtn').onclick=async()=>{
 };
 
 const qp=new URLSearchParams(location.search).get('room');
-if(qp){$('codeInput').value=qp.toUpperCase();show('joinArea')}
+if(qp){
+ mode='online';hide('modeSelect');show('onlineSetup');$('codeInput').value=qp.toUpperCase();show('joinArea');
+}
 </script>
 </body>
 </html>
